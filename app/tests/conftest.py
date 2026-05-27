@@ -1,7 +1,7 @@
 import asyncio
 import pytest
 from typing import Generator
-from httpx import AsyncClient
+
 
 # Force asyncio loop to behave in test environments
 @pytest.fixture(scope="session")
