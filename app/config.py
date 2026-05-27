@@ -1,5 +1,5 @@
 
-from typing import Literal, Optional
+from typing import Literal
 # pyrefly: ignore [missing-import]
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
