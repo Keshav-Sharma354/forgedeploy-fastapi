@@ -14,7 +14,7 @@ with patch.dict("os.environ", {
 }):
     from app.main import app
     from app.database import get_db
-    from app.redis_client import redis_manager
+
 
 
 @pytest.mark.asyncio
