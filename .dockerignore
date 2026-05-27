@@ -1,0 +1,43 @@
+# Ignore git configuration
+.git
+.gitignore
+.github
+
+# Ignore Python caches & compiled binaries
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
+env/
+venv/
+.venv/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Ignore testing and coverage files
+.pytest_cache/
+.coverage
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Ignore local environment configurations and secrets
+.env
+.env.local
+.env.*.local
+docker-compose.override.yml
+
+# Ignore operating system files
+.DS_Store
+Thumbs.db
+
+# Ignore documentation, scripts, and logs that are not required in runtime
+docs/
+scripts/
+*.log
+security_hardening.md
+README.md

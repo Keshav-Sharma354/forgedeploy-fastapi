@@ -1,0 +1,135 @@
+version: "3.8"
+
+services:
+  # ============================================================================
+  # PostgreSQL Service (Database Engine)
+  # ============================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend-net
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ============================================================================
+  # Redis Service (Caching & Message Broker)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: redis_cache
+    restart: always
+    command: redis-server --appendonly yes --requirepass ${POSTGRES_PASSWORD} # Reuse strong PW for Redis access control
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend-net
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${POSTGRES_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ============================================================================
+  # FastAPI Application Service
+  # ============================================================================
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fastapi_app
+    restart: always
+    environment:
+      PROJECT_NAME: ${PROJECT_NAME}
+      ENVIRONMENT: ${ENVIRONMENT}
+      DEBUG: ${DEBUG}
+      SECRET_KEY: ${SECRET_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_URL: redis://:${POSTGRES_PASSWORD}@redis:6379/0
+      DOMAIN: ${DOMAIN}
+      USE_SSL: ${USE_SSL}
+    networks:
+      - frontend-net
+      - backend-net
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ============================================================================
+  # NGINX Service (Reverse Proxy, SSL Termination & Static optimization)
+  # ============================================================================
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: nginx_proxy
+    restart: always
+    ports:
+      - "${NGINX_PORT}:80"
+      - "${NGINX_SSL_PORT}:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - nginx_certs:/etc/nginx/ssl:ro
+      - certbot_webroot:/var/www/certbot:ro
+      - nginx_logs:/var/log/nginx
+    networks:
+      - frontend-net
+    depends_on:
+      - fastapi
+    # Wait until fastapi is up to avoid NGINX failing to start if proxy upstream is missing
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+# ==============================================================================
+# Volumes and Networks Definitions
+# ==============================================================================
+volumes:
+  postgres_data:
+    name: postgres_prod_data
+  redis_data:
+    name: redis_prod_data
+  nginx_certs:
+    name: nginx_prod_certs
+  certbot_webroot:
+    name: certbot_prod_webroot
+  nginx_logs:
+    name: nginx_prod_logs
+
+networks:
+  # Isolated frontend traffic (Only NGINX and FastAPI can talk here)
+  frontend-net:
+    driver: bridge
+  # Isolated backend database/cache traffic (FastAPI, Postgres, and Redis can talk here)
+  # NGINX has no direct database networking, protecting your data layer from direct proxy exposure.
+  backend-net:
+    driver: bridge
