@@ -4,6 +4,9 @@ A highly secure, highly reliable, and production-ready containerized backend dep
 
 Featuring automated Let's Encrypt SSL orchestration, secure database backup pipelines, microservice network isolation, structured analytic logs, and zero-downtime GitHub Actions CI/CD workflows.
 
+> [!TIP]
+> For complete step-by-step production operations, VPS bootstrapping, Let's Encrypt SSL setup, and database disaster recovery workflows, refer to the comprehensive **[DEPLOYMENT.md](file:///c:/Users/DELL/Desktop/forgedeploy-fastapi/DEPLOYMENT.md)** guide.
+
 ---
 
 ## Architectural Overview
